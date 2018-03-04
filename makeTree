@@ -1,0 +1,1 @@
+ls $1 -R --format=single-column --file-type -g --time-style=long-iso --no-group | sed -re 's/^[^ ]* //' > $2
