@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <string.h>
 
 //==============DEFINES===================//
 #define BUFF_SIZE 256 // read buffer size
