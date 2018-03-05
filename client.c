@@ -13,8 +13,13 @@
 #include <netdb.h>
 #include <string.h>
 
+#include "files_handling.h"
+#include "codes.h"
+
 //==============DEFINES===================//
 #define BUFF_SIZE 256 // read buffer size
+#define PORT_NUMBER 5647
+#define SERVER_ADDRESS "127.0.0.1"
 
 //Error expressing function
 void error(char *msg) {
@@ -33,14 +38,8 @@ int main(int argc, char *argv[])
 
     char buffer[BUFF_SIZE];
 
-    //Verifying number of arguments
-    if (argc < 3) {
-        fprintf(stderr,"Usage %s hostname port\n", argv[0]);
-        exit(0);
-    }
-
     ////Port number is being given as an argument
-    port_number = atoi(argv[2]);
+    port_number = PORT_NUMBER;
 
     //Creating the socket
     //int socket (int family, int type, int protocol);
@@ -52,7 +51,7 @@ int main(int argc, char *argv[])
     }
 
     //Getting the host by 127.0.0.1 name given as an argument
-    server = gethostbyname(argv[1]);
+    server = gethostbyname(SERVER_ADDRESS);
 
     //Verifying that the host is valid
     if (server == NULL) {
@@ -82,19 +81,18 @@ int main(int argc, char *argv[])
         error("ERROR connecting");
     }
 
-    //For this example we enter a message and display it on the server
-    printf("Please enter the message: ");
+
 
     //Reset the buffer
     //bzero ( char *dest, int nbytes);
     bzero(buffer, BUFF_SIZE);
 
-    //Read the message
-    //char fgets (char * restrict str, int size, FILE * restrict stream)
-    fgets(buffer, BUFF_SIZE-1, stdin);
+    //initialise connection
+    snprintf(buffer,2,"%d",EST_CON);
 
     //Write the message
     message_status = write(socket_fd, buffer, strlen(buffer));
+    print_action(EST_CON);
 
     //Verify if the message was sent properly
     if (message_status < 0) {
@@ -112,9 +110,15 @@ int main(int argc, char *argv[])
     if (message_status < 0) {
         error("ERROR reading from socket");
     }
+    if(buffer[0]=='2')
+    {
+        print_action(EST_CON_ACK);
+    }
+    else if(buffer[0]=='7')
+    {
+        print_action(ERROR);
+    }
 
-    //Print the readed message
-    printf("%s\n", buffer);
 
     return 0;
 }
