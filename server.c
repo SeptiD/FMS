@@ -18,6 +18,8 @@
 //==============DEFINES===================//
 #define BUFF_SIZE 256 // read buffer size
 #define PORT_NUMBER 5647
+#define SERVER_TREE_FILE_NAME "serverTreeFile"
+#define SERVER_TREE_PATH "/home/sd/Desktop/FMS-copy"
 //Error expressing function
 void error(char *msg) {
     perror(msg);
@@ -36,6 +38,8 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in server_address;
     struct sockaddr_in client_address;
     pid_t pid;
+
+    create_directory_structure_file(SERVER_TREE_FILE_NAME,SERVER_TREE_PATH);
 
     //Verifying number of arguments
     /*
@@ -114,37 +118,71 @@ int main(int argc, char *argv[]) {
                 break;
             case 0://child process
                 close(socket_fd);
-                //Setting the buffer to 000...00
-                //bzero ( char *dest, int nbytes);
+
+                //start the communication
+                //step 1 ->establish connection
+
                 bzero(buffer, BUFF_SIZE);
-
-                //Making a read operation
                 read_write_status = read(new_socket_fd, buffer, BUFF_SIZE - 1);
-
-                //Verifying the read status
                 if (read_write_status < 0) {
                     error("ERROR reading from socket");
                 }
 
                 print_action(buffer[0]-'0');
+                if((buffer[0]-'1')!=0)
+                {
+                    //printf("aici\n");
+                    print_action(ERROR);
+                    exit(-1);
+                }
 
                 bzero(buffer, BUFF_SIZE);
                 snprintf(buffer,2,"%d",EST_CON_ACK);
-                //Making a write operation
                 read_write_status = write(new_socket_fd,buffer ,strlen(buffer));
                 print_action(EST_CON_ACK);
-
-                //Verifying the write status
                 if (read_write_status < 0) {
                     error("ERROR writing to socket");
                 }
+
+                //step 2 -> send the tree file
+                bzero(buffer, BUFF_SIZE);
+                read_write_status = read(new_socket_fd, buffer,  1);
+                if (read_write_status < 0) {
+                    error("ERROR reading from socket");
+                }
+
+                print_action(buffer[0]-'0');
+                if((buffer[0]-'0')!=REQ_TREE_FILE)
+                {
+                    print_action(ERROR);
+                    exit(-1);
+                }
+
+
+
+                bzero(buffer, BUFF_SIZE);
+                snprintf(buffer,2,"%d",REQ_TREE_FILE_ACK);
+                read_write_status = write(new_socket_fd,buffer ,strlen(buffer));
+                print_action(REQ_TREE_FILE_ACK);
+                if (read_write_status < 0) {
+                    error("ERROR writing to socket");
+                }
+
+                if((write_file_to_socket(SERVER_TREE_FILE_NAME,new_socket_fd))!=0)
+                {
+                    print_action(ERROR);
+                    exit(-1);
+                }
+
+
                 exit(0);
             default://parent process
                 close(new_socket_fd);
 
         }
-        return 0;
+
     }
+    return 0;
 }
 
 
