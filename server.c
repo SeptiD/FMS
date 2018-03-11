@@ -41,13 +41,6 @@ int main(int argc, char *argv[]) {
 
     create_directory_structure_file(SERVER_TREE_FILE_NAME,SERVER_TREE_PATH);
 
-    //Verifying number of arguments
-    /*
-    if (argc < 2) {
-        fprintf(stderr,"ERROR, no port provided\n");
-        exit(1);
-    }*/
-
     //Port number is being given as an argument
     port_number = PORT_NUMBER;
 

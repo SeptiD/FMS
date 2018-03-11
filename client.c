@@ -137,5 +137,8 @@ int main(int argc, char *argv[])
     }
     read_file_from_socket(SERVER_TREE_FILE_NAME,socket_fd);
 
+    //step 3 -> process the tree file received from server
+    process_tree_file(SERVER_TREE_FILE_NAME);
+
     return 0;
 }
