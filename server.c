@@ -167,7 +167,7 @@ int main(int argc, char *argv[]) {
                     exit(-1);
                 }
                 //step 3-> waiting to send file
-                send_file(new_socket_fd);
+                while(send_file(new_socket_fd)==0);
 
                 exit(0);
             default://parent process

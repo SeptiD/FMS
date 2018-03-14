@@ -16,7 +16,8 @@
 
 #include "codes.h"
 //#include "files_handling.h"
-#define BUF_SIZE 256
+#define BUFF_SIZE 256
+#define REL_PATH_HEADER_SIZE 100
 void create_directory_structure_file(char *file_name,char *path_to_folder)
 {
     pid_t myPid;
@@ -34,17 +35,26 @@ int write_file_to_socket(char *file_name,int socket_fd)
 {
     int fd;
     int file_read=0;
-    char buf[BUF_SIZE];
+    char buf[BUFF_SIZE];
+
     if((fd=open(file_name,O_RDONLY))<0)
     {
         return -1;
     }
 
-    while((file_read=read(fd,buf,BUF_SIZE-1))>0)
+    char temp;
+    while((file_read=read(fd,buf,BUFF_SIZE-1))>0)
     {
-
+        temp=file_read;
+        write(socket_fd,&temp,1);
+        buf[file_read]='\0';
+        //printf("<<<%s>>>\n",buf);
         write(socket_fd,buf,file_read);
+        //printf("file_read:%d\n",file_read);
     }
+    temp=0;
+    write(socket_fd,&temp,1);
+    //printf("after while: %d\n",file_read);
 
     if(file_read==-1)
     {
@@ -60,17 +70,43 @@ int read_file_from_socket(char *file_name,int socket_fd)
 {
     int fd;
     int file_read;
-    char buf[BUF_SIZE];
+    char buf[BUFF_SIZE];
+    unsigned char toRead=BUFF_SIZE-1;
     if((fd=creat(file_name,ACCESSPERMS))<0)
     {
         return -1;
     }
+    file_read=read(socket_fd,buf,1);
 
-    while((file_read=read(socket_fd,buf,BUF_SIZE-1))>0)
+    if(buf[0]!=toRead)
     {
-
-        write(fd,buf,file_read);
+        toRead=buf[0];
     }
+    while((file_read=read(socket_fd,buf,toRead))>0)
+    {
+        buf[file_read]='\0';
+        //printf("file %d\n",file_read);
+        //printf("<<<%s>>>\n",buf);
+        write(fd,buf,file_read);
+
+        toRead=toRead-file_read;
+        if(toRead==0)
+        {
+            toRead==BUFF_SIZE-1;
+            file_read=read(socket_fd,buf,1);
+            if(buf[0]==0)
+            {
+                break;
+            }
+
+            if(buf[0]!=toRead)
+            {
+                toRead=buf[0];
+            }
+        }
+
+    }
+    //printf("after while\n");
 
     if(file_read==-1)
     {
@@ -79,6 +115,44 @@ int read_file_from_socket(char *file_name,int socket_fd)
     }
     close(fd);
     return 0;
+}
+int get_file(char *relative_path,int socket_fd)
+{
+    int message_status;
+    char buffer[BUFF_SIZE];
+    bzero(buffer, BUFF_SIZE);
+    snprintf(buffer,2,"%d",REQ_FILE);
+    //printf("The first buffer: %s\n",buffer);
+    message_status = write(socket_fd, buffer, strlen(buffer));
+    print_action(REQ_FILE);
+    bzero(buffer,BUFF_SIZE);
+    message_status = read(socket_fd, buffer, 1);
+    //printf("The buffer %s\n",buffer);
+    if (message_status < 0) {
+        printf("ERROR reading from socket\n");
+        return -1;
+    }
+    if(buffer[0]=='4')
+    {
+        print_action(REQ_FILE_ACK);
+    }
+    else
+    {
+        printf("Instead of REQ_FILE_ACK %c\n",buffer[0]);
+        printf("REQ_FILE_ACK ERROR\n");
+        print_action(ERROR);
+        return -1;
+    }
+    //bzero(buffer, BUFF_SIZE);
+    //snprintf(buffer,strlen(relative_path),"%s",relative_path);
+    char tempBuf[REL_PATH_HEADER_SIZE];
+    sprintf(tempBuf,"%s",relative_path);
+    message_status = write(socket_fd, relative_path, REL_PATH_HEADER_SIZE);
+    //printf("message_status %d\n",message_status);
+
+    printf("Getting %s\n",relative_path);
+    read_file_from_socket(relative_path,socket_fd);
+
 }
 
 int check_regular_file(char *path,char *line,int socket_fd)
@@ -219,13 +293,14 @@ int process_tree_file(char *tree_file_name,int socket_fd)
     int len_read=0;
     f = fopen(tree_file_name,"r+");
     if(f==NULL)
-    {
+    {printf("nulll\n");
         return -1;
     }
     int path_starter= -1;
     char *path;
     while (fgets(line,100,f)!=NULL)
     {
+        printf("%s\n",line);
         //folder line
         //example: /home/sd/Desktop/FMS-copy/client_server_test:
         if(path_starter == -1)
@@ -285,48 +360,17 @@ int process_tree_file(char *tree_file_name,int socket_fd)
     return(0);
 }
 
-int get_file(char *relative_path,int socket_fd)
-{
-    int message_status;
-    char buffer[BUFF_SIZE];
-    bzero(buffer, BUFF_SIZE);
-    snprintf(buffer,2,"%d",REQ_FILE);
-    message_status = write(socket_fd, buffer, strlen(buffer));
-    print_action(REQ_FILE);
-
-    bzero(buffer,BUFF_SIZE);
-    message_status = read(socket_fd, buffer, 1);
-
-    if (message_status < 0) {
-        error("ERROR reading from socket");
-    }
-
-    if(buffer[0]=='9')
-    {
-        print_action(REQ_FILE_ACK);
-    }
-    else
-    {
-        print_action(ERROR);
-        return -1;
-    }
-    //bzero(buffer, BUFF_SIZE);
-    //snprintf(buffer,strlen(relative_path),"%s",relative_path);
-    message_status = write(socket_fd, relative_path, strlen(relative_path));
-    printf("Getting %s\n",relative_path);
-    read_file_from_socket(relative_path,socket_fd);
-
-}
-
 int send_file(int socket_fd)
 {
     int read_write_status;
-    char buffer[BUF_SIZE];
+    char buffer[BUFF_SIZE];
     bzero(buffer, BUFF_SIZE);
-    read_write_status = read(new_socket_fd, buffer,  1);
+    read_write_status = read(socket_fd, buffer,  1);
+    //printf("The first buffer: %s\n",buffer);
     if (read_write_status < 0)
     {
-        error("ERROR reading from socket");
+        printf("ERROR reading from socket\n");
+        return -1;
     }
     if((buffer[0]-'0')!=REQ_FILE)
     {
@@ -337,20 +381,24 @@ int send_file(int socket_fd)
 
     bzero(buffer, BUFF_SIZE);
     snprintf(buffer,2,"%d",REQ_FILE_ACK);
-    read_write_status = write(new_socket_fd,buffer ,strlen(buffer));
+    //printf("The buffer %s \n",buffer);
+    read_write_status = write(socket_fd,buffer ,1);
     if (read_write_status < 0)
     {
-        error("ERROR writing to socket");
+        printf("ERROR writing to socket\n");
         return -1;
     }
     print_action(REQ_FILE_ACK);
 
     //get the relative_path
     bzero(buffer, BUFF_SIZE);
-    read_write_status = read(new_socket_fd, buffer,  BUF_SIZE-1);
+    read_write_status = read(socket_fd, buffer,  REL_PATH_HEADER_SIZE);
+    printf("read_write status %d\n",read_write_status);
     if (read_write_status < 0) {
-        error("ERROR reading from socket");
+        printf("ERROR reading from socket\n");
+        return -1;
     }
     printf("Sending %s\n",buffer);
     write_file_to_socket(buffer,socket_fd);
+    return 0;
 }
