@@ -144,13 +144,13 @@ int main(int argc, char *argv[]) {
                     error("ERROR reading from socket");
                 }
 
-                print_action(buffer[0]-'0');
+
                 if((buffer[0]-'0')!=REQ_TREE_FILE)
                 {
                     print_action(ERROR);
                     exit(-1);
                 }
-
+                print_action(buffer[0]-'0');
 
 
                 bzero(buffer, BUFF_SIZE);
@@ -166,7 +166,8 @@ int main(int argc, char *argv[]) {
                     print_action(ERROR);
                     exit(-1);
                 }
-
+                //step 3-> waiting to send file
+                send_file(new_socket_fd);
 
                 exit(0);
             default://parent process

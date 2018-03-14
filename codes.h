@@ -13,6 +13,8 @@
 #define REQ_FILE_ACK        4
 #define REQ_TREE_FILE       5
 #define REQ_TREE_FILE_ACK   6
+#define END_CON             8
+#define END_CON_ACK         9
 
 void print_action(int code);
 

@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <time.h>
 
+#include "codes.h"
 //#include "files_handling.h"
 #define BUF_SIZE 256
 void create_directory_structure_file(char *file_name,char *path_to_folder)
@@ -60,7 +61,7 @@ int read_file_from_socket(char *file_name,int socket_fd)
     int fd;
     int file_read;
     char buf[BUF_SIZE];
-    if((fd=creat(file_name,S_IRUSR|S_IWUSR))<0)
+    if((fd=creat(file_name,ACCESSPERMS))<0)
     {
         return -1;
     }
@@ -80,7 +81,7 @@ int read_file_from_socket(char *file_name,int socket_fd)
     return 0;
 }
 
-int check_regular_file(char *path,char *line)
+int check_regular_file(char *path,char *line,int socket_fd)
 {
     char relative_path[100];
     const char s[5] = " \n\t/";
@@ -96,7 +97,8 @@ int check_regular_file(char *path,char *line)
 
 
     /* walk through other tokens */
-    while( token != NULL ) {
+    while( token != NULL )
+    {
 
         if(first_number == NULL)
         {
@@ -141,8 +143,8 @@ int check_regular_file(char *path,char *line)
     if(current_file==NULL)
     {
         //we create it
-        creat (relative_path,ACCESSPERMS );
-        //get_file(relative_path)
+        //creat (relative_path,ACCESSPERMS );
+        get_file(relative_path,socket_fd);
     }
     else //file already exists
     {
@@ -167,8 +169,8 @@ int check_regular_file(char *path,char *line)
                 return -1;
             }
 
-            creat(relative_path,ACCESSPERMS);
-            //get_file(relative_path)
+            //creat(relative_path,ACCESSPERMS);
+            get_file(relative_path,socket_fd);
 
         }else{//check date of modification to be newer in client
             char client_date[17];
@@ -193,8 +195,8 @@ int check_regular_file(char *path,char *line)
                     }
 
                     //printf("aici %s\n",relative_path);
-                    creat(relative_path,ACCESSPERMS);
-                    //get_file(relative_path)
+                    //creat(relative_path,ACCESSPERMS);
+                    get_file(relative_path,socket_fd);
                     break;
                 }
                 else
@@ -210,7 +212,7 @@ int check_regular_file(char *path,char *line)
     return 0;
 }
 
-int process_tree_file(char *tree_file_name)
+int process_tree_file(char *tree_file_name,int socket_fd)
 {
     FILE *f;
     char line[100];
@@ -273,7 +275,7 @@ int process_tree_file(char *tree_file_name)
             }
             //regular files
             //example: 1 3570 2018-03-03 19:05 server_test.c
-            if(check_regular_file(path,line)!=0)
+            if(check_regular_file(path,line,socket_fd)!=0)
             {
                 return -1;
             }
@@ -281,4 +283,74 @@ int process_tree_file(char *tree_file_name)
     }
     fclose(f);
     return(0);
+}
+
+int get_file(char *relative_path,int socket_fd)
+{
+    int message_status;
+    char buffer[BUFF_SIZE];
+    bzero(buffer, BUFF_SIZE);
+    snprintf(buffer,2,"%d",REQ_FILE);
+    message_status = write(socket_fd, buffer, strlen(buffer));
+    print_action(REQ_FILE);
+
+    bzero(buffer,BUFF_SIZE);
+    message_status = read(socket_fd, buffer, 1);
+
+    if (message_status < 0) {
+        error("ERROR reading from socket");
+    }
+
+    if(buffer[0]=='9')
+    {
+        print_action(REQ_FILE_ACK);
+    }
+    else
+    {
+        print_action(ERROR);
+        return -1;
+    }
+    //bzero(buffer, BUFF_SIZE);
+    //snprintf(buffer,strlen(relative_path),"%s",relative_path);
+    message_status = write(socket_fd, relative_path, strlen(relative_path));
+    printf("Getting %s\n",relative_path);
+    read_file_from_socket(relative_path,socket_fd);
+
+}
+
+int send_file(int socket_fd)
+{
+    int read_write_status;
+    char buffer[BUF_SIZE];
+    bzero(buffer, BUFF_SIZE);
+    read_write_status = read(new_socket_fd, buffer,  1);
+    if (read_write_status < 0)
+    {
+        error("ERROR reading from socket");
+    }
+    if((buffer[0]-'0')!=REQ_FILE)
+    {
+        print_action(ERROR);
+        return -1;
+    }
+    print_action(REQ_FILE);
+
+    bzero(buffer, BUFF_SIZE);
+    snprintf(buffer,2,"%d",REQ_FILE_ACK);
+    read_write_status = write(new_socket_fd,buffer ,strlen(buffer));
+    if (read_write_status < 0)
+    {
+        error("ERROR writing to socket");
+        return -1;
+    }
+    print_action(REQ_FILE_ACK);
+
+    //get the relative_path
+    bzero(buffer, BUFF_SIZE);
+    read_write_status = read(new_socket_fd, buffer,  BUF_SIZE-1);
+    if (read_write_status < 0) {
+        error("ERROR reading from socket");
+    }
+    printf("Sending %s\n",buffer);
+    write_file_to_socket(buffer,socket_fd);
 }
