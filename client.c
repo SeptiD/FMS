@@ -21,6 +21,8 @@
 #define PORT_NUMBER 5647
 #define SERVER_ADDRESS "127.0.0.1"
 #define SERVER_TREE_FILE_NAME "ServerTreeFileToClient"
+#define CLIENT_TREE_FILE_NAME "ClientTreeFile"
+#define CLIENT_TREE_PATH "/home/sd/Desktop/testC/a"
 
 //Error expressing function
 void error(char *msg) {
@@ -140,5 +142,32 @@ int main(int argc, char *argv[])
     //step 3 -> process the tree file received from server
     process_tree_file(SERVER_TREE_FILE_NAME,socket_fd);
 
+    //step 4->erase the files that are only in client and not on server
+    create_client_directory_structure_file(CLIENT_TREE_FILE_NAME,CLIENT_TREE_PATH);
+
+    delete_old_files(CLIENT_TREE_FILE_NAME, SERVER_TREE_FILE_NAME);
+
+    //step 5->end the connection with the server
+    bzero(buffer, BUFF_SIZE);
+    snprintf(buffer,2,"%d",END_CON);
+    message_status = write(socket_fd, buffer, strlen(buffer));
+    print_action(END_CON);
+
+    bzero(buffer,BUFF_SIZE);
+    message_status = read(socket_fd, buffer, 1);
+
+    if (message_status < 0) {
+        error("ERROR reading from socket");
+    }
+
+    if(buffer[0]-'0'==END_CON_ACK)
+    {
+        print_action(END_CON_ACK);
+    }
+    else
+    {
+        print_action(ERROR);
+        return -1;
+    }
     return 0;
 }

@@ -19,7 +19,7 @@
 #define BUFF_SIZE 256 // read buffer size
 #define PORT_NUMBER 5647
 #define SERVER_TREE_FILE_NAME "serverTreeFile"
-#define SERVER_TREE_PATH "/home/sd/Desktop/FMS-copy"
+#define SERVER_TREE_PATH "/home/sd/Desktop/testS/a"
 //Error expressing function
 void error(char *msg) {
     perror(msg);
@@ -178,5 +178,4 @@ int main(int argc, char *argv[]) {
     }
     return 0;
 }
-
 
