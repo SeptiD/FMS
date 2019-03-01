@@ -10,7 +10,7 @@ gcc -o server.o server.c codes.c
 ./client.o
 
 **Contributors:**
-@AllenPianoMan
+@AllenFarcas
 @gustid
 @ienescaroland
 @SeptiD
